@@ -30,8 +30,7 @@ public class CommandExecuter
             var s="/"+item.Name.Split("TlgCom")[0].ToLower();            
             var w=item.CustomAttributes.Last().ConstructorArguments[0].Value.ToString();
             MethodDictionary.Add(s,item.Name);
-            MethodWordDictionary.Add(w,item.Name);
-            Console.WriteLine(item.CustomAttributes);
+            MethodWordDictionary.Add(w,item.Name);            
         }       
     }
     private void PutInfo(DateTime startDate, DateTime finishDate, long id){
@@ -40,7 +39,7 @@ public class CommandExecuter
                         t.RequestDate=DateTime.UtcNow;
                         t.UserId=id;
                         _dc.TimeOffItems.Add(t);
-                        _dc.SaveChangesAsync();                        
+                        _dc.SaveChangesAsync();                                 
                     }
                    
     }

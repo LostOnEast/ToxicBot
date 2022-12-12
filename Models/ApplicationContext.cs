@@ -12,7 +12,7 @@ namespace HabraBot
         // }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=tlgbot;Username=postgres;Password=99Troubles!");
+            optionsBuilder.UseNpgsql("Host=82.162.58.84;Port=5432;Database=tlgbot;Username=techuser;Password=99Troubles!");
         }
     }
 }

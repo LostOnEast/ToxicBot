@@ -69,7 +69,7 @@ class Program
                 receiverOptions,
                 cancellationToken
             );
-            Console.ReadLine();
+            //Console.ReadLine();
         }
     }
 }

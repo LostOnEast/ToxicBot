@@ -33,17 +33,32 @@ public class CommandExecuter
             MethodWordDictionary.Add(w,item.Name);            
         }       
     }
-    private void PutInfo(DateTime startDate, DateTime finishDate, long id){
-            if(_dc.UserInfos.SingleOrDefault(t=>t.Id==id)!=null){
+    private async void PutInfoAsync(DateTime startDate, DateTime finishDate, long id){
+                    var usr=_dc.UserInfos.Find(id);
+                    if(usr!=null){
                         var t =new TimeOffItem{StartDate=startDate.ToUniversalTime(),FinishDate=finishDate.ToUniversalTime()};
                         t.RequestDate=DateTime.UtcNow;
                         t.UserId=id;
                         _dc.TimeOffItems.Add(t);
-                        _dc.SaveChangesAsync();                                 
-                    }
-                   
+                        await _dc.SaveChangesAsync();                                 
+                    }                   
     }
-    public async void  Add_DayComProcAsync(CallbackQuery callbackQuery){
+    private async Task<string> GetUserStatAsync(long id){
+                    
+                    var stat=await _dc.TimeOffItems.Where(t=>t.UserId==id && t.FinishDate>DateTime.UtcNow.AddMonths(-1)).ToListAsync();
+                    //stat.Wait();
+                    Task.WaitAll();
+                    var cnt=stat.Count();
+                    TimeSpan cnt_time=new TimeSpan(0); 
+                    // var fstat=stat.ToList();
+                                               
+                     foreach (var item in stat)
+                     {
+                         cnt_time+=item.FinishDate-item.StartDate;
+                     }
+                    return $"За прошедший месяц {cnt} отгулов, общей длительностью {cnt_time.TotalHours}.";
+    }
+    public async void  AddDayComProcAsync(CallbackQuery callbackQuery){
                     var cmd=callbackQuery.Data.ToString().Split(" ");
                     if(cmd.Length>1 & callbackQuery.Data.ToString()[0]=='/'){
                            try
@@ -51,14 +66,22 @@ public class CommandExecuter
                                 var cdt=DateTime.UtcNow.AddDays(Convert.ToInt32(cmd[1]));
                                 var sd= DateTime.Parse(cdt.ToString("dd.MM.yy")+" "+cmd[2].Split("-")[0]);
                                 var fd= DateTime.Parse(cdt.ToString("dd.MM.yy")+" "+cmd[2].Split("-")[1]);
-                                PutInfo(sd,fd,callbackQuery.From.Id); 
-                                _bot.SendTextMessageAsync(callbackQuery.Message.Chat, "Ваш запрос принят.");
-                                //отправка сообщения боссу
+                                
+                                await _bot.SendTextMessageAsync(callbackQuery.Message.Chat, "Ваш запрос принят.");
+                                //отправка сообщения боссу                                
+                                var res=await _dc.UserInfos.FindAsync(callbackQuery.From.Id);
+                                var chat_with_boss_id= res.ChatIdWithChief;
+                                var stat="Нет данных о статистике";                                
+                                stat=await GetUserStatAsync(res.Id);                                                             
+                                if(chat_with_boss_id!=null){
+                                    _bot.SendTextMessageAsync(chat_with_boss_id,$"Запрос выходного от @{callbackQuery.From.Username} с {sd} по {fd}. {stat}");
+                                }
+                                PutInfoAsync(sd,fd,callbackQuery.From.Id); 
                             
                            }
-                           catch (System.Exception)
+                           catch (System.Exception ex)
                            {                            
-                                throw;
+                                Console.WriteLine(ex.Message);
                            }
                            
                            
@@ -80,30 +103,20 @@ public class CommandExecuter
                     
     }
     [TelegramCommandDescription("Статистика","Просмотр статистики пользователя за месяц.")]
-    public async void  StatsTlgComProcAsync(Message message){
-                    
-                    var stat=_dc.TimeOffItems.Where(t=>t.UserId==message.From.Id).ToList();
-                    stat=stat.Where(t=>t.FinishDate>DateTime.UtcNow.AddMonths(-1)).ToList();
-                    var cnt=stat.Count();
-                    TimeSpan cnt_time=new TimeSpan(0);
-                    foreach (var item in stat)
-                    {
-                        cnt_time+=item.FinishDate-item.StartDate;
-                    }
-                    await _bot.SendTextMessageAsync(message.Chat, $"За прошедший месяц вы брали отгул {cnt} раз, общей длительностью {cnt_time.TotalHours} часов (длительность рабоченго месяца составляет 160 часов).");
-                    
-                    
-                    
+    public async void  StatsTlgComProcAsync(Message message){              
+                  
+                    var stat=await GetUserStatAsync(message.From.Id);
+                    await _bot.SendTextMessageAsync(message.Chat,stat); 
     }
     [TelegramCommandDescription("Взять отгул","Запроса выходного на завтра.")]
-    public async void  Add_DayTlgComProcAsync(Message message){
+    public async void  AddDayTlgComProcAsync(Message message){
                     var cmd=message.Text.Split(" ");
                     if(cmd.Length>1 & message.Text[0]=='/'){
                            try
                            {
                                 var sd= DateTime.Parse(cmd[1]+" "+cmd[2].Split("-")[0]);
                                 var fd= DateTime.Parse(cmd[1]+" "+cmd[2].Split("-")[1]);
-                                PutInfo(sd,fd,message.From.Id); 
+                                PutInfoAsync(sd,fd,message.From.Id); 
                                 _bot.SendTextMessageAsync(message.Chat, "Ваш запрос принят.");
                            }
                            catch (System.Exception)

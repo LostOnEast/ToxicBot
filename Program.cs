@@ -46,7 +46,7 @@ class Program
         }
         public static async Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
         {       
-            ce.Add_DayComProcAsync(callbackQuery); 
+            ce.AddDayComProcAsync(callbackQuery); 
             return;
         }
         public static async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)

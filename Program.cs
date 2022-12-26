@@ -7,14 +7,19 @@ using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HabraBot
 {
 class Program
     {
-        static ITelegramBotClient bot = new TelegramBotClient("5526032863:AAE3KmnBevOx5BwPlPNiDebIryUUVMCMrfM");
-        static ApplicationContext dc= new ApplicationContext();
-        static CommandExecuter ce = new CommandExecuter(bot,dc);
+        static ITelegramBotClient bot;
+        static ApplicationContext dc;
+        static IConfiguration configuration;
+        static CommandExecuter ce;// = new CommandExecuter(bot,dc);
+        
         //Функция обработки сообщения отправленного боту
         public static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {            
@@ -34,9 +39,8 @@ class Program
                         else
                         ce.EmptyAnswerProcAsync(message);
                     } 
-                }
-                              
-            }          
+                }                              
+            }         
 
             if (update.Type == Telegram.Bot.Types.Enums.UpdateType.CallbackQuery)
             {                
@@ -56,6 +60,22 @@ class Program
         }        
         static void Main(string[] args)
         {
+            //add configuration
+            IConfiguration configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables()
+            .AddCommandLine(args)
+            .Build();
+            var settings = configuration.GetSection("AppSettings").Get<BotSettings>();
+            //init db connection
+            var optionsBuilder = new DbContextOptionsBuilder<ApplicationContext>(); 
+            var options = optionsBuilder
+                    .UseNpgsql(settings.ConnectionString)
+                    .Options;
+            dc=new ApplicationContext(options);            
+            bot = new TelegramBotClient(settings.TelegramToken);            
+            ce = new CommandExecuter(bot,dc,settings);
+
             Console.WriteLine("Запущен бот " + bot.GetMeAsync().Result.FirstName); 
             var cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
@@ -71,6 +91,7 @@ class Program
             );
             Console.ReadLine();
         }
+        
     }
 }
 
